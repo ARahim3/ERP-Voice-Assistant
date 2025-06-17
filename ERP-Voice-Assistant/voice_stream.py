@@ -7,6 +7,7 @@ import uvicorn
 import io
 from pydub import AudioSegment
 from agent_setup import agent, agent_config
+import os
 
 logger.remove()
 logger.add(
@@ -22,19 +23,28 @@ groq_client = Groq()
 if __name__ == "__main__":
     import concurrent.futures
     from fastapi.middleware.cors import CORSMiddleware
-    import io
-    from pydub import AudioSegment
 
     app = FastAPI()
     
     # Add CORS middleware
+    # app.add_middleware(
+    #     CORSMiddleware,
+    #     allow_origins=["http://localhost:5000"],
+    #     allow_credentials=True,
+    #     allow_methods=["*"],
+    #     allow_headers=["*"],
+    )
+
+    FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5000")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5000"],
+        allow_origins=[FRONTEND_URL],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+
     
     # Create thread pool executor for concurrency
     executor = concurrent.futures.ThreadPoolExecutor()

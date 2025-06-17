@@ -5,7 +5,7 @@ from langgraph.prebuilt import create_react_agent
 from loguru import logger
 from typing import Literal, Optional
 import json
-
+import os
 # --- Agent Configuration ---
 model = ChatGroq(
     model="meta-llama/llama-4-scout-17b-16e-instruct",
@@ -15,7 +15,8 @@ model = ChatGroq(
 memory = InMemorySaver()
 
 # --- ERP API Configuration ---
-BASE_URL = "http://127.0.0.1:5000/api"
+# BASE_URL = "http://127.0.0.1:5000/api"
+BASE_URL = os.environ.get("ERP_API_URL", "http://127.0.0.1:5000/api")
 
 # --- Tool Definitions for ERP Co-Pilot ---
 

@@ -161,7 +161,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 data_manager = DataManager(socketio)
 
 # ==================== BASE HTML PAGE TEMPLATE (Refined) ====================
-def create_base_html_page(vue_app_script="", page_specific_content="", current_page_path=""):
+def create_base_html_page(vue_app_script="", page_specific_content="", current_page_path="", voice_backend_url="ws://127.0.0.1:7861/"):
     global_socket_script = """
     <script>
         const globalSocket = io();
@@ -211,8 +211,9 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
                 voiceSocket.close();
             }
             
-            voiceSocket = new WebSocket('ws://127.0.0.1:7861/');
-            
+            // voiceSocket = new WebSocket('ws://127.0.0.1:7861/');
+            voiceSocket = new WebSocket('{voice_backend_url}');
+
             voiceSocket.onopen = () => {
                 console.log('🔌 Voice WebSocket CONNECTED');
             };
@@ -1109,17 +1110,29 @@ FINANCE_VUE_SCRIPT = """
 
 # ==================== FLASK ROUTES ====================
 @app.route('/')
-def dashboard_page(): return create_base_html_page(DASHBOARD_VUE_SCRIPT, DASHBOARD_APP_HTML, '/')
+def dashboard_page(): 
+    voice_url = os.environ.get("VOICE_BACKEND_URL", "ws://127.0.0.1:7861/")
+    return create_base_html_page(DASHBOARD_VUE_SCRIPT, DASHBOARD_APP_HTML, '/', voice_backend_url=voice_url)
 @app.route('/crm_vue')
-def crm_page(): return create_base_html_page(CRM_VUE_SCRIPT, CRM_APP_HTML, '/crm_vue')
+def crm_page(): 
+    voice_url = os.environ.get("VOICE_BACKEND_URL", "ws://127.0.0.1:7861/")
+    return create_base_html_page(CRM_VUE_SCRIPT, CRM_APP_HTML, '/crm_vue', voice_backend_url=voice_url)
 @app.route('/inventory_vue')
-def inventory_page(): return create_base_html_page(INVENTORY_VUE_SCRIPT, INVENTORY_APP_HTML, '/inventory_vue')
+def inventory_page(): 
+    voice_url = os.environ.get("VOICE_BACKEND_URL", "ws://127.0.0.1:7861/")
+    return create_base_html_page(INVENTORY_VUE_SCRIPT, INVENTORY_APP_HTML, '/inventory_vue', voice_backend_url=voice_url)
 @app.route('/orders_vue')
-def orders_page(): return create_base_html_page(ORDERS_VUE_SCRIPT, ORDERS_APP_HTML, '/orders_vue')
+def orders_page(): 
+    voice_url = os.environ.get("VOICE_BACKEND_URL", "ws://127.0.0.1:7861/")
+    return create_base_html_page(ORDERS_VUE_SCRIPT, ORDERS_APP_HTML, '/orders_vue', voice_backend_url=voice_url)
 @app.route('/hr_vue')
-def hr_page(): return create_base_html_page(HR_VUE_SCRIPT, HR_APP_HTML, '/hr_vue')
+def hr_page(): 
+    voice_url = os.environ.get("VOICE_BACKEND_URL", "ws://127.0.0.1:7861/")
+    return create_base_html_page(HR_VUE_SCRIPT, HR_APP_HTML, '/hr_vue', voice_backend_url=voice_url)
 @app.route('/finance_vue')
-def finance_page(): return create_base_html_page(FINANCE_VUE_SCRIPT, FINANCE_APP_HTML, '/finance_vue')
+def finance_page(): 
+    voice_url = os.environ.get("VOICE_BACKEND_URL", "ws://127.0.0.1:7861/")
+    return create_base_html_page(FINANCE_VUE_SCRIPT, FINANCE_APP_HTML, '/finance_vue', voice_backend_url=voice_url)
 
 # ==================== API ENDPOINTS (Ensure all are implemented) ====================
 @app.route('/api/dashboard', methods=['GET'])
