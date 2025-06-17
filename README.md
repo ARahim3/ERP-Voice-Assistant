@@ -1,4 +1,4 @@
-# Flask ERP with Voice Assistant
+# ERP System with Voice Assistant
 
 Integrated ERP system with voice interaction capabilities.
 
