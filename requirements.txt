@@ -1,0 +1,22 @@
+# Web Servers
+fastapi
+uvicorn
+gunicorn
+Flask
+Flask-SocketIO
+
+# API & Logic
+groq
+loguru
+requests
+langchain-groq
+langgraph
+pydantic
+
+# Data & Audio
+numpy
+pydub
+pandas
+
+# Remove fastrtc and ffmpeg-python as they are not needed for Render
+# FFmpeg is pre-installed on Render's instances.
