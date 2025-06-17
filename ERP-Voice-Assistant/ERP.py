@@ -157,7 +157,7 @@ class DataManager:
 
 app = Flask(__name__)
 app.secret_key = 'your-very-secret-key-for-vue-erp-final'
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 data_manager = DataManager(socketio)
 
 # ==================== BASE HTML PAGE TEMPLATE (Refined) ====================
@@ -336,7 +336,7 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
     </script>
     """
     global_socket_script = global_socket_script.replace('{voice_backend_url}', voice_backend_url)
-    
+
     nav_items = [
         {"path": "/", "name": "Dashboard"}, {"path": "/crm_vue", "name": "CRM"},
         {"path": "/inventory_vue", "name": "Inventory"}, {"path": "/orders_vue", "name": "Orders"},

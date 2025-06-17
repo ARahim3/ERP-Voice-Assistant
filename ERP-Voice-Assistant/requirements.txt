@@ -4,6 +4,7 @@ uvicorn
 gunicorn
 Flask
 Flask-SocketIO
+eventlet
 
 # API & Logic
 groq
