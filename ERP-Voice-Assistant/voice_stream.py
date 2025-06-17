@@ -33,7 +33,7 @@ if __name__ == "__main__":
     #     allow_credentials=True,
     #     allow_methods=["*"],
     #     allow_headers=["*"],
-    )
+    # )
 
     FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5000")
     app.add_middleware(
