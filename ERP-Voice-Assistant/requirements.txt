@@ -1,0 +1,15 @@
+# Core dependencies
+fastapi==0.110.0
+uvicorn==0.29.0
+groq==0.3.0
+loguru==0.7.2
+numpy==1.26.4
+fastrtc==0.1.0
+
+# Audio processing dependencies
+pydub==0.25.1
+ffmpeg-python==0.2.0
+scipy==1.13.0
+
+# Note: FFmpeg must be installed system-wide for audio conversion
+# sudo apt install ffmpeg (on Debian/Ubuntu)
