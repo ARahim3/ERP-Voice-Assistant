@@ -65,7 +65,7 @@ def process_audio(webm_data: bytes) -> tuple:
         # Check for navigation keywords
         navigation_keywords = [
             "create new", "new customer", "new product", "new invoice",
-            "navigate to", "go to", "open", "switch to"
+            "navigate to", "go to", "open", "switch to", "add new", "create"
         ]
         is_navigation = any(keyword in transcript.lower() for keyword in navigation_keywords)
         

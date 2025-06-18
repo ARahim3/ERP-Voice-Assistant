@@ -32,14 +32,13 @@ def navigate_to_page(target_app: Literal["crm", "inventory", "orders", "hr", "fi
         "target_app": target_app,
         "url": f"/{target_app}_vue"
     }
-    # === START CHANGE ===
+
     headers = {'Content-Type': 'application/json'}
     data = json.dumps(payload)
-    # === END CHANGE ===
+
     
     logger.info(f"▶️ Navigating to {target_app} module...")
     try:
-        # === CHANGE THIS LINE ===
         response = requests.post(url, data=data, headers=headers)
         response.raise_for_status()
         logger.success(f"✅ Navigation to {target_app} successful.")
@@ -60,14 +59,12 @@ def fill_form_field(target_app: str, field_id: str, value: str):
         "field_id": field_id,
         "value": value
     }
-    # === START CHANGE ===
+ 
     headers = {'Content-Type': 'application/json'}
     data = json.dumps(payload)
-    # === END CHANGE ===
 
     logger.info(f"📝 Filling field '{field_id}' with value '{value}' in {target_app}...")
     try:
-        # === CHANGE THIS LINE ===
         response = requests.post(url, data=data, headers=headers)
         response.raise_for_status()
         logger.debug(f"🔍 Server response: {response.text}")
@@ -535,8 +532,7 @@ def search_orders(query: str):
     except requests.exceptions.RequestException as e:
         return f"Error searching orders: {e}"
 
-# Note: Search for Orders and Invoices can be added here if needed,
-# though they are less commonly searched by simple text queries.
+
 
 # --- Tool & System Prompt Definition ---
 

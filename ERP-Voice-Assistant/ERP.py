@@ -10,9 +10,6 @@ from typing import Dict, List, Any, Optional
 import os
 
 # ==================== DATA MODELS ====================
-# In main_erp_vue_final.py, replace the whole DataManager class
-
-# In main_erp_vue_final.py, replace the ENTIRE DataManager class
 
 class DataManager:
     def __init__(self, socketio_instance):
@@ -27,7 +24,6 @@ class DataManager:
         ]
         self.customers = pd.DataFrame(customer_data)
         
-        # ... (rest of your sample data initializations) ...
         product_data = [
             {'id': 'prod001', 'name': 'Wireless Headphones Pro', 'sku': 'WH-PRO-001', 'category': 'Electronics', 'price': 299.99, 'cost': 150.00, 'stock_quantity': 150, 'reorder_level': 25, 'supplier_id': 'supp001', 'warehouse_location': 'A-1-15', 'created_date': '2024-01-01', 'description': 'High-fidelity wireless headphones with noise cancellation.'},
             {'id': 'prod002', 'name': 'Ergonomic Office Chair', 'sku': 'CHAIR-ERG-001', 'category': 'Furniture', 'price': 449.99, 'cost': 200.00, 'stock_quantity': 45, 'reorder_level': 10, 'supplier_id': 'supp002', 'warehouse_location': 'B-2-08', 'created_date': '2024-01-05', 'description': 'Comfortable ergonomic chair for long working hours.'},
@@ -128,7 +124,6 @@ class DataManager:
             return deleted_item_data
         return None
 
-    # ... (the rest of the specific add/update/delete methods like add_customer, update_product, etc. are the same) ...
     def add_customer(self, data: Dict) -> Optional[Dict]: return self._add_item('customers', data, 'customer', ['name', 'email'])
     def update_customer(self, id: str, data: Dict) -> Optional[Dict]: return self._update_item('customers', id, data, 'customer')
     def delete_customer(self, id: str) -> Optional[Dict]: return self._delete_item('customers', id, 'customer')
@@ -160,7 +155,7 @@ app.secret_key = 'your-very-secret-key-for-vue-erp-final'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 data_manager = DataManager(socketio)
 
-# ==================== BASE HTML PAGE TEMPLATE (Refined) ====================
+# ==================== BASE HTML PAGE TEMPLATE  ====================
 def create_base_html_page(vue_app_script="", page_specific_content="", current_page_path="", voice_backend_url="ws://127.0.0.1:7861/"):
     global_socket_script = """
     <script>
@@ -405,9 +400,6 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
 
 # ==================== VUE APP TEMPLATES AND SCRIPTS (Strings) ====================
 
-# --- Dashboard (Fixed) ---
-# In main_erp_vue_final.py
-
 # --- Dashboard Vue App ---
 DASHBOARD_APP_HTML = """
 <div id="dashboard-app" v-cloak>
@@ -424,9 +416,7 @@ DASHBOARD_APP_HTML = """
 </div>
 """
 
-# And ensure the corresponding DASHBOARD_VUE_SCRIPT has displayMetricKeys available
-# (which it already does from the previous version). The script itself was likely fine,
-# the template parsing was the issue.
+# Ensure the corresponding DASHBOARD_VUE_SCRIPT has displayMetricKeys available
 
 DASHBOARD_VUE_SCRIPT = """
 <script>
@@ -500,7 +490,7 @@ DASHBOARD_VUE_SCRIPT = """
 </script>
 """
 
-# Replace CRM_APP_HTML
+
 CRM_APP_HTML = """
 <div id="crm-app" v-cloak>
     <div class="form-section"><h3>{{ formTitle }}</h3><form @submit.prevent="submitCustomerForm" id="crm_customer_form"><div class="form-grid"> <div class="form-group"><label for="crm-name">Name *</label><input type="text" id="crm-name" v-model="currentCustomer.name" required></div> <div class="form-group"><label for="crm-company">Company</label><input type="text" id="crm-company" v-model="currentCustomer.company"></div> <div class="form-group"><label for="crm-email">Email *</label><input type="email" id="crm-email" v-model="currentCustomer.email" required></div> <div class="form-group"><label for="crm-phone">Phone</label><input type="tel" id="crm-phone" v-model="currentCustomer.phone"></div> <div class="form-group"><label for="crm-address">Address</label><input type="text" id="crm-address" v-model="currentCustomer.address"></div> <div class="form-group"><label for="crm-status">Status</label><select id="crm-status" v-model="currentCustomer.status"><option value="Active">Active</option><option value="Lead">Lead</option><option value="Inactive">Inactive</option></select></div> <div class="form-group"><label for="crm-lead_score">Lead Score</label><input type="number" id="crm-lead_score" v-model.number="currentCustomer.lead_score"></div> <div class="form-group" style="grid-column: span 2;"><label for="crm-notes">Notes</label><textarea id="crm-notes" v-model="currentCustomer.notes"></textarea></div></div><button type="submit">{{ isEditing ? 'Update' : 'Add' }} Customer</button> <button type="button" @click="resetForm" v-if="isEditing || currentCustomer.name" class="btn-secondary" style="margin-left: 10px;">Cancel</button></form></div>
@@ -522,8 +512,7 @@ CRM_APP_HTML = """
     </div></div>
 </div>
 """
-# Replace CRM_VUE_SCRIPT
-# In your main Python file, find and replace the CRM_VUE_SCRIPT variable
+
 
 CRM_VUE_SCRIPT = """
 <script>
@@ -672,9 +661,7 @@ CRM_VUE_SCRIPT = """
 </script>
 """
 
-# In main_erp_vue_final.py
 
-# Replace INVENTORY_APP_HTML
 INVENTORY_APP_HTML = """
 <div id="inventory-app" v-cloak>
     <div class="form-section">
@@ -715,7 +702,6 @@ INVENTORY_APP_HTML = """
 </div>
 """
 
-# Replace INVENTORY_VUE_SCRIPT
 INVENTORY_VUE_SCRIPT = """
 <script>
     const { createApp, ref, onMounted } = Vue;
@@ -790,7 +776,7 @@ INVENTORY_VUE_SCRIPT = """
 </script>
 """
 
-# Replace ORDERS_APP_HTML
+
 ORDERS_APP_HTML = """
 <div id="orders-app" v-cloak>
     <div class="form-section">
@@ -828,8 +814,7 @@ ORDERS_APP_HTML = """
     </div></div>
 </div>
 """
-# Replace ORDERS_VUE_SCRIPT
-# In main_erp_vue_final.py, replace ORDERS_VUE_SCRIPT
+
 
 ORDERS_VUE_SCRIPT = """
 <script>
@@ -896,8 +881,7 @@ ORDERS_VUE_SCRIPT = """
 </script>
 """
 
-# --- HR (Employees) Vue App (New) ---
-# Replace HR_APP_HTML
+
 HR_APP_HTML = """
 <div id="hr-app" v-cloak>
     <div class="form-section">
@@ -939,7 +923,7 @@ HR_APP_HTML = """
     </div></div>
 </div>
 """
-# In main_erp_vue_final.py, replace HR_VUE_SCRIPT
+
 
 HR_VUE_SCRIPT = """
 <script>
@@ -998,7 +982,7 @@ HR_VUE_SCRIPT = """
     }
 </script>
 """
-# Replace FINANCE_APP_HTML
+
 FINANCE_APP_HTML = """
 <div id="finance-app" v-cloak>
     <div class="form-section">
@@ -1040,8 +1024,7 @@ FINANCE_APP_HTML = """
     </div></div>
 </div>
 """
-# Replace FINANCE_VUE_SCRIPT
-# In main_erp_vue_final.py, replace FINANCE_VUE_SCRIPT
+
 
 FINANCE_VUE_SCRIPT = """
 <script>
@@ -1141,15 +1124,10 @@ def finance_page():
 def api_dashboard(): return jsonify(data_manager.get_dashboard_metrics())
 
 # Customers
-# NEW version to put in your file
-# In main_erp_vue_final.py, replace the api_customers function with this:
-
-# In main_erp_vue_final.py, replace the api_customers function
 
 @app.route('/api/customers', methods=['GET', 'POST'])
 def api_customers():
     if request.method == 'GET':
-        # This is now safe because DataManager prevents NaN from being stored
         return jsonify(data_manager.customers.to_dict('records'))
         
     elif request.method == 'POST':
@@ -1167,7 +1145,6 @@ def api_customer_detail(customer_id):
         return jsonify(item) if item else (jsonify({'error': 'Not found or delete failed'}), 404)
 
 # Products
-# In main_erp_vue_final.py
 
 @app.route('/api/products', methods=['GET', 'POST'])
 def api_products():
@@ -1194,7 +1171,6 @@ def api_product_detail(product_id):
         return jsonify(item) if item else (jsonify({'error': 'Not found or delete failed'}), 404)
 
 # Employees
-# In main_erp_vue_final.py
 
 @app.route('/api/employees', methods=['GET', 'POST'])
 def api_employees():
@@ -1221,7 +1197,6 @@ def api_employee_detail(employee_id_custom):
         return jsonify(item) if item else (jsonify({'error': 'Not found or delete failed'}), 404)
     
 # Orders
-# In main_erp_vue_final.py
 
 @app.route('/api/orders', methods=['GET', 'POST'])
 def api_orders():
@@ -1248,7 +1223,6 @@ def api_order_detail(order_id):
         return jsonify(item) if item else (jsonify({'error': 'Not found or delete failed'}), 404)
 
 # Invoices
-# In main_erp_vue_final.py
 
 @app.route('/api/invoices', methods=['GET', 'POST'])
 def api_invoices():
