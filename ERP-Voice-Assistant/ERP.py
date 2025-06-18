@@ -161,11 +161,9 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
     <script>
         const globalSocket = io();
         globalSocket.on('connect', () => {
-            console.log('Global Socket: Connected! Firing ready event.');
-            document.dispatchEvent(new CustomEvent('globalSocketReady', { detail: globalSocket }));
+            console.log('Global Socket: Connected!');
         });
         
-        window.pendingNavigation = null;
         globalSocket.on('data_update', (msg) => {
             const notifications = document.getElementById('notifications');
             if (!notifications) return;
@@ -176,14 +174,25 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
             notifications.prepend(item);
             setTimeout(() => item.remove(), 7000);
         });
+
+        // --- REFACTORED LOGIC START ---
+
+        let assistantState = 'idle'; // Can be 'idle', 'listening', 'processing', 'speaking'
+        let pendingNavigation = null;
+
         globalSocket.on('ui_instruction', (instruction) => {
+            console.log(`[ui_instruction] Received: ${instruction.action}. Assistant state: ${assistantState}`);
             if (instruction.action === 'navigate' && instruction.url) {
-                if (window.location.pathname !== instruction.url.split('?')[0]) {
-                    window.pendingNavigation = instruction;
-                } else if (window.vueApp && typeof window.vueApp.handleGlobalInstruction === 'function') {
-                    window.vueApp.handleGlobalInstruction(instruction);
+                // If the assistant is busy with anything (processing or speaking), queue the navigation.
+                if (assistantState === 'processing' || assistantState === 'speaking') {
+                    console.log(`[ui_instruction] Assistant is busy. Queueing navigation to ${instruction.url}`);
+                    pendingNavigation = instruction;
+                } else {
+                    console.log(`[ui_instruction] Assistant is idle. Navigating immediately to ${instruction.url}`);
+                    window.location.href = instruction.url;
                 }
-            } else if (window.vueApp && typeof window.vueApp.handleGlobalInstruction === 'function') {
+            }
+            else if (window.vueApp && typeof window.vueApp.handleGlobalInstruction === 'function') {
                 window.vueApp.handleGlobalInstruction(instruction);
             }
         });
@@ -197,14 +206,12 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
         let voiceSocket;
 
         function createVoiceSocket() {
-            if (voiceSocket && voiceSocket.readyState !== WebSocket.CLOSED) {
-                voiceSocket.close();
-            }
+            if (voiceSocket && voiceSocket.readyState !== WebSocket.CLOSED) voiceSocket.close();
             voiceSocket = new WebSocket('__WEBSOCKET_URL_PLACEHOLDER__');
             
-            voiceSocket.onopen = () => console.log('🔌 Voice WebSocket CONNECTED');
-            voiceSocket.onclose = (event) => console.log(`🔌 Voice WebSocket CLOSED: ${event.code}`);
-            voiceSocket.onerror = (error) => console.error('❌ Voice WebSocket ERROR:', error);
+            voiceSocket.onopen = () => console.log('[voiceSocket] Connection open.');
+            voiceSocket.onclose = () => console.log('[voiceSocket] Connection closed.');
+            voiceSocket.onerror = (error) => console.error('[voiceSocket] Error:', error);
             
             voiceSocket.onmessage = event => {
                 if (typeof event.data === 'string') {
@@ -216,30 +223,35 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
                         } else if (message.type === 'agent_response') {
                             agentResponseDisplay.textContent = `Agent: ${message.data}`;
                         }
-                    } catch (e) {
-                        if (event.data === 'NAVIGATE_NOW' && window.pendingNavigation) {
-                            const instruction = window.pendingNavigation;
-                            window.pendingNavigation = null;
-                            let targetUrl = instruction.url;
-                            if (instruction.params) {
-                                targetUrl += `?${new URLSearchParams(instruction.params).toString()}`;
-                            }
-                            window.location.href = targetUrl;
-                        }
-                    }
+                    } catch (e) { /* Ignore non-JSON */ }
                     return;
                 }
+
+                assistantState = 'speaking'; // Set state BEFORE playing audio
+                console.log(`[voiceSocket] State changed to: ${assistantState}`);
 
                 const audioBlob = new Blob([event.data], { type: 'audio/mp3' });
                 const audioUrl = URL.createObjectURL(audioBlob);
                 const audio = new Audio(audioUrl);
                 
-                audio.play().catch(e => console.error('❌ Error playing audio:', e));
+                audio.play().catch(e => {
+                    console.error('Error playing audio:', e);
+                    assistantState = 'idle'; // Reset state on error
+                });
                 
                 audio.onended = () => {
+                    console.log('[voiceSocket] Finished playing audio.');
+                    assistantState = 'idle';
+                    console.log(`[voiceSocket] State changed to: ${assistantState}`);
+                    URL.revokeObjectURL(audioUrl);
                     transcriptionDisplay.textContent = '';
                     agentResponseDisplay.textContent = '';
-                    URL.revokeObjectURL(audioUrl);
+
+                    if (pendingNavigation) {
+                        console.log(`[voiceSocket] Executing queued navigation to ${pendingNavigation.url}`);
+                        window.location.href = pendingNavigation.url;
+                        pendingNavigation = null;
+                    }
                 };
             };
         }
@@ -251,6 +263,9 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
                 try {
                     transcriptionDisplay.textContent = '';
                     agentResponseDisplay.textContent = 'Listening...';
+                    assistantState = 'listening';
+                    console.log(`[Button] State changed to: ${assistantState}`);
+                    
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     mediaRecorder = new MediaRecorder(stream);
                     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
@@ -259,18 +274,24 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
                         if (voiceSocket.readyState === WebSocket.OPEN) {
                             voiceSocket.send(audioBlob);
                             agentResponseDisplay.textContent = 'Processing...';
+                            assistantState = 'processing';
+                            console.log(`[Button] State changed to: ${assistantState}`);
+                        } else {
+                            assistantState = 'idle'; // Reset if socket is closed
                         }
                         audioChunks = [];
                     };
                     mediaRecorder.start();
                     voiceBtn.textContent = '🛑 Stop';
-                    voiceBtn.classList.add('is-listening'); // <-- ADD THIS
-                } catch (error) { console.error('Error accessing microphone:', error); }
+                } catch (error) { 
+                    console.error('Error accessing microphone:', error);
+                    assistantState = 'idle';
+                }
             } else {
                 mediaRecorder.stop();
                 mediaRecorder = null;
                 voiceBtn.textContent = '🎤 Voice Assistant';
-                voiceBtn.classList.remove('is-listening'); // <-- ADD THIS
+                // The state will be set to 'processing' by the onstop handler
             }
         });
     </script>

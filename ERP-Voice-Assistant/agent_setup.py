@@ -5,7 +5,7 @@ from langgraph.prebuilt import create_react_agent
 from loguru import logger
 from typing import Literal, Optional
 import json
-import os
+
 # --- Agent Configuration ---
 model = ChatGroq(
     model="meta-llama/llama-4-scout-17b-16e-instruct",
@@ -15,8 +15,7 @@ model = ChatGroq(
 memory = InMemorySaver()
 
 # --- ERP API Configuration ---
-# BASE_URL = "http://127.0.0.1:5000/api"
-BASE_URL = os.environ.get("ERP_API_URL", "http://127.0.0.1:5000/api")
+BASE_URL = "http://127.0.0.1:5000/api"
 
 # --- Tool Definitions for ERP Co-Pilot ---
 
@@ -26,19 +25,24 @@ def navigate_to_page(target_app: Literal["crm", "inventory", "orders", "hr", "fi
     Call this first when a user wants to start a new task, like creating a new customer or product.
     For example, if the user says 'I want to add a new customer', navigate to 'crm'.
     """
+    if target_app == 'dashboard':
+        page_url = '/'
+    else:
+        page_url = f"/{target_app}_vue"
     url = f"{BASE_URL}/ui_command"
     payload = {
         "action": "navigate",
         "target_app": target_app,
-        "url": f"/{target_app}_vue"
+        "url": page_url
     }
-
+    # === START CHANGE ===
     headers = {'Content-Type': 'application/json'}
     data = json.dumps(payload)
-
+    # === END CHANGE ===
     
-    logger.info(f"▶️ Navigating to {target_app} module...")
+    logger.info(f"▶️ Navigating to {target_app} module at {page_url}...")
     try:
+        # === CHANGE THIS LINE ===
         response = requests.post(url, data=data, headers=headers)
         response.raise_for_status()
         logger.success(f"✅ Navigation to {target_app} successful.")
@@ -59,12 +63,14 @@ def fill_form_field(target_app: str, field_id: str, value: str):
         "field_id": field_id,
         "value": value
     }
- 
+    # === START CHANGE ===
     headers = {'Content-Type': 'application/json'}
     data = json.dumps(payload)
+    # === END CHANGE ===
 
     logger.info(f"📝 Filling field '{field_id}' with value '{value}' in {target_app}...")
     try:
+        # === CHANGE THIS LINE ===
         response = requests.post(url, data=data, headers=headers)
         response.raise_for_status()
         logger.debug(f"🔍 Server response: {response.text}")
@@ -532,7 +538,8 @@ def search_orders(query: str):
     except requests.exceptions.RequestException as e:
         return f"Error searching orders: {e}"
 
-
+# Note: Search for Orders and Invoices can be added here if needed,
+# though they are less commonly searched by simple text queries.
 
 # --- Tool & System Prompt Definition ---
 

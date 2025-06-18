@@ -63,20 +63,19 @@ def process_audio(webm_data: bytes) -> tuple:
         logger.info(f'💬 Response: "{response_text}"')
         
         # Check for navigation keywords
-        navigation_keywords = [
-            "create new", "new customer", "new product", "new invoice",
-            "navigate to", "go to", "open", "switch to", "add new", "create"
-        ]
-        is_navigation = any(keyword in transcript.lower() for keyword in navigation_keywords)
+        # navigation_keywords = [
+        #     "create new", "new customer", "new product", "new invoice",
+        #     "navigate to", "go to", "open", "switch to", "add new", "create"
+        # ]
+        # is_navigation = any(keyword in transcript.lower() for keyword in navigation_keywords)
         
-        return response_text, is_navigation, transcript
+        return response_text, transcript
             
     except Exception as e:
         logger.error(f"Audio processing error: {e}")
         return "Sorry, I encountered an error processing your request.", False
 
 # --- API Routes (Global Scope) ---
-@app.websocket("/")
 @app.websocket("/")
 async def websocket_endpoint(websocket: WebSocket):
     from starlette.websockets import WebSocketState
@@ -109,7 +108,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     break
             
             # This function call doesn't change
-            response_text, is_navigation, transcript = await asyncio.get_event_loop().run_in_executor(
+            response_text, transcript = await asyncio.get_event_loop().run_in_executor(
                 executor,
                 lambda: process_audio(message)
             )
@@ -136,13 +135,13 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.send_bytes(mp3_data)
             logger.info("✅ Audio response sent successfully")
             
-            if is_navigation:
-                audio = AudioSegment.from_file(io.BytesIO(mp3_data), format="mp3")
-                duration_seconds = len(audio) / 1000.0
-                await asyncio.sleep(duration_seconds + 0.5)
-                logger.info("🚀 Sending navigation flag")
-                await websocket.send_text("NAVIGATE_NOW")
-                logger.info("✅ Navigation flag sent")
+            # if is_navigation:
+            #     audio = AudioSegment.from_file(io.BytesIO(mp3_data), format="mp3")
+            #     duration_seconds = len(audio) / 1000.0
+            #     await asyncio.sleep(duration_seconds + 0.5)
+            #     logger.info("🚀 Sending navigation flag")
+            #     await websocket.send_text("NAVIGATE_NOW")
+            #     logger.info("✅ Navigation flag sent")
                 
     except Exception as e:
         if "1001" in str(e) or "going away" in str(e):
