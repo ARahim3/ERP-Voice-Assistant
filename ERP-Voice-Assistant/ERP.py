@@ -162,15 +162,11 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
         const globalSocket = io();
         globalSocket.on('connect', () => {
             console.log('Global Socket: Connected! Firing ready event.');
-            // Dispatch a custom event on the document to signal that the socket is ready
             document.dispatchEvent(new CustomEvent('globalSocketReady', { detail: globalSocket }));
         });
-        // The rest of the global listeners remain the same...
         
-        // Initialize pending navigation storage
         window.pendingNavigation = null;
         globalSocket.on('data_update', (msg) => {
-            console.log('Global Socket: data_update:', msg);
             const notifications = document.getElementById('notifications');
             if (!notifications) return;
             const item = document.createElement('div');
@@ -181,10 +177,8 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
             setTimeout(() => item.remove(), 7000);
         });
         globalSocket.on('ui_instruction', (instruction) => {
-            console.log('Global Socket: ui_instruction:', instruction);
             if (instruction.action === 'navigate' && instruction.url) {
                 if (window.location.pathname !== instruction.url.split('?')[0]) {
-                    console.log(`⏳ Queueing navigation to ${instruction.url} until TTS completes`);
                     window.pendingNavigation = instruction;
                 } else if (window.vueApp && typeof window.vueApp.handleGlobalInstruction === 'function') {
                     window.vueApp.handleGlobalInstruction(instruction);
@@ -194,144 +188,93 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
             }
         });
 
-        // Voice assistant functionality with WebSocket reconnection
         const voiceBtn = document.getElementById('voice-btn');
+        const transcriptionDisplay = document.getElementById('transcription-display');
+        const agentResponseDisplay = document.getElementById('agent-response-display');
+
         let mediaRecorder;
         let audioChunks = [];
         let voiceSocket;
 
-        // Function to create/recreate WebSocket connection
         function createVoiceSocket() {
             if (voiceSocket && voiceSocket.readyState !== WebSocket.CLOSED) {
                 voiceSocket.close();
             }
+            voiceSocket = new WebSocket('__WEBSOCKET_URL_PLACEHOLDER__');
             
-            // voiceSocket = new WebSocket('ws://127.0.0.1:7861/');
-            voiceSocket = new WebSocket('{voice_backend_url}');
-
-            voiceSocket.onopen = () => {
-                console.log('🔌 Voice WebSocket CONNECTED');
-            };
+            voiceSocket.onopen = () => console.log('🔌 Voice WebSocket CONNECTED');
+            voiceSocket.onclose = (event) => console.log(`🔌 Voice WebSocket CLOSED: ${event.code}`);
+            voiceSocket.onerror = (error) => console.error('❌ Voice WebSocket ERROR:', error);
             
-            voiceSocket.onclose = (event) => {
-                console.log(`🔌 Voice WebSocket CLOSED: ${event.code} - ${event.reason}`);
-                
-                // Only attempt to reconnect for non-normal closures
-                if (event.code !== 1000) {
-                    setTimeout(() => {
-                        console.log('🔄 Attempting to reconnect voice WebSocket...');
-                        createVoiceSocket();
-                    }, 1000);
-                }
-            };
-            
-            voiceSocket.onerror = (error) => {
-                console.error('❌ Voice WebSocket ERROR:', error);
-            };
-            
-            // Handle backend responses - both audio and navigation commands
             voiceSocket.onmessage = event => {
-                // Handle navigation commands
                 if (typeof event.data === 'string') {
-                    console.log('💬 Received text message:', event.data);
-                    if (event.data === 'NAVIGATE_NOW' && window.pendingNavigation) {
-                        const instruction = window.pendingNavigation;
-                        window.pendingNavigation = null;
-                        
-                        let targetUrl = instruction.url;
-                        if (instruction.params) {
-                            targetUrl += `?${new URLSearchParams(instruction.params).toString()}`;
+                    try {
+                        const message = JSON.parse(event.data);
+                        if (message.type === 'transcription') {
+                            transcriptionDisplay.textContent = `You said: "${message.data}"`;
+                            agentResponseDisplay.textContent = 'Agent is thinking...';
+                        } else if (message.type === 'agent_response') {
+                            agentResponseDisplay.textContent = `Agent: ${message.data}`;
                         }
-                        console.log('🚀 Executing navigation to', targetUrl);
-                        window.location.href = targetUrl;
-                    }
-                    return;
-                }
-                
-                // Handle audio data
-                console.log('🎵 RECEIVED audio response from server:', event.data.size, 'bytes');
-                const audioBlob = new Blob([event.data], { type: 'audio/mp3' });
-                const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
-                
-                console.log('🔊 Attempting to play audio...');
-                audio.play().then(() => {
-                    console.log('✅ Audio played successfully');
-                    
-                    // Execute navigation after audio completes
-                    audio.onended = () => {
-                        console.log('✅ Finished playing audio');
-                        URL.revokeObjectURL(audioUrl);
-                        console.log('🗑️ Audio URL cleaned up');
-                        
-                        // Check if we have a pending navigation
-                        if (window.pendingNavigation) {
+                    } catch (e) {
+                        if (event.data === 'NAVIGATE_NOW' && window.pendingNavigation) {
                             const instruction = window.pendingNavigation;
                             window.pendingNavigation = null;
-                            
-                            console.log('🚀 Executing queued navigation');
                             let targetUrl = instruction.url;
                             if (instruction.params) {
                                 targetUrl += `?${new URLSearchParams(instruction.params).toString()}`;
                             }
                             window.location.href = targetUrl;
                         }
-                    };
-                }).catch(error => {
-                    console.error('❌ Error playing audio:', error);
-                });
+                    }
+                    return;
+                }
+
+                const audioBlob = new Blob([event.data], { type: 'audio/mp3' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                
+                audio.play().catch(e => console.error('❌ Error playing audio:', e));
+                
+                audio.onended = () => {
+                    transcriptionDisplay.textContent = '';
+                    agentResponseDisplay.textContent = '';
+                    URL.revokeObjectURL(audioUrl);
+                };
             };
-            
         }
 
-        // Initialize WebSocket connection
         createVoiceSocket();
 
         voiceBtn.addEventListener('click', async () => {
             if (!mediaRecorder) {
                 try {
+                    transcriptionDisplay.textContent = '';
+                    agentResponseDisplay.textContent = 'Listening...';
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     mediaRecorder = new MediaRecorder(stream);
-                    
-                    mediaRecorder.ondataavailable = event => {
-                        audioChunks.push(event.data);
-                    };
-                    
-                    mediaRecorder.onstop = async () => {
+                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                    mediaRecorder.onstop = () => {
                         const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                        
-                        console.log('🎤 Audio recorded, checking WebSocket state:', voiceSocket.readyState);
-                        
-                        // Only send audio if WebSocket is open
                         if (voiceSocket.readyState === WebSocket.OPEN) {
-                            console.log('📤 Sending audio to server');
                             voiceSocket.send(audioBlob);
-                        } else {
-                            console.log('ℹ️ WebSocket closed during recording, discarding audio');
+                            agentResponseDisplay.textContent = 'Processing...';
                         }
-                        
                         audioChunks = [];
                     };
-                    
                     mediaRecorder.start();
                     voiceBtn.textContent = '🛑 Stop';
-                } catch (error) {
-                    console.error('Error accessing microphone:', error);
-                }
+                    voiceBtn.classList.add('is-listening'); // <-- ADD THIS
+                } catch (error) { console.error('Error accessing microphone:', error); }
             } else {
                 mediaRecorder.stop();
                 mediaRecorder = null;
                 voiceBtn.textContent = '🎤 Voice Assistant';
+                voiceBtn.classList.remove('is-listening'); // <-- ADD THIS
             }
         });
-
-        // Test log to confirm the script is loaded
-        console.log("🧪 WebSocket code loaded!");
-        
     </script>
     """
-    global_socket_script = global_socket_script.replace('{voice_backend_url}', voice_backend_url)
-
     nav_items = [
         {"path": "/", "name": "Dashboard"}, {"path": "/crm_vue", "name": "CRM"},
         {"path": "/inventory_vue", "name": "Inventory"}, {"path": "/orders_vue", "name": "Orders"},
@@ -339,7 +282,8 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
     ]
     nav_html = "".join([f'<a href="{item["path"]}" class="{ "active" if item["path"] == current_page_path else ""}">{item["name"]}</a>' for item in nav_items])
 
-    return f"""
+    # THIS SECTION CONTAINS THE FULL, CORRECTED CSS
+    final_html = f"""
 <!DOCTYPE html><html lang="en">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -355,7 +299,7 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
         .nav-container a:hover {{ background-color: #eef2ff; color: #4f46e5; }}
         .nav-container a.active {{ background-color: #4f46e5; color: white; }}
         .content {{ padding: 1.5rem 2rem; }}
-        .module-container {{ }} /* Container for each Vue app's content */
+        .module-container {{ }}
         .form-section, .table-section {{ background: #ffffff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06); margin-bottom: 2rem; }}
         h2 {{ font-size: 1.5rem; color: #111827; margin-top:0; margin-bottom:1rem; }}
         h3 {{ font-size: 1.25rem; color: #1f2937; margin-top:0; margin-bottom:1rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.5rem; }}
@@ -371,8 +315,8 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
         .btn-warning {{ background-color: #f59e0b; color: #1f2937; }} .btn-warning:hover {{ background-color: #d97706; }}
         .table-container {{ overflow-x: auto; }}
         table {{ width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 1rem; font-size: 0.875rem; }}
-        th, td {{ padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }} /* nowrap with overflow-x on container */
-        td {{ white-space: normal; word-wrap: break-word; overflow-wrap: break-word; }} /* Allow content in td to wrap */
+        th, td {{ padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #e5e7eb; white-space: nowrap; }}
+        td {{ white-space: normal; word-wrap: break-word; overflow-wrap: break-word; }}
         th {{ background-color: #f9fafb; font-weight: 600; color: #374151; white-space: nowrap; }}
         tr:hover > td {{ background-color: #f3f4f6; }}
         .status-badge {{ padding: 0.25em 0.6em; border-radius: 100px; font-size: 0.75rem; font-weight: 500; color: white; display: inline-block; }}
@@ -386,17 +330,54 @@ def create_base_html_page(vue_app_script="", page_specific_content="", current_p
         .metric-card {{ background: #fff; padding: 1.25rem; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
         .metric-card h4 {{ margin-top:0; margin-bottom:0.5rem; color: #6b7280; font-size: 0.9rem; text-transform: capitalize; }}
         .metric-card p {{ font-size: 2.25em; color: #4f46e5; font-weight: 600; margin:0; }}
+
+        #voice-assistant-ui-container {{
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px;
+        }}
+        .va-text {{
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            max-width: 300px;
+            text-align: right;
+            min-height: 18px;
+        }}
+        @keyframes pulse {{
+            0% {{ box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7); }}
+            70% {{ box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }}
+            100% {{ box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }}
+        }}
+
+        .is-listening {{
+            animation: pulse 2s infinite;
+        }}
     </style>
 </head>
 <body>
     <div class="header"><h1>ERP Management System</h1><nav class="nav-container">{nav_html}</nav></div>
-    <button id="voice-btn" class="btn" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000;">🎤 Voice Assistant</button>
+    
+    <div id="voice-assistant-ui-container">
+        <div id="transcription-display" class="va-text"></div>
+        <div id="agent-response-display" class="va-text"></div>
+        <button id="voice-btn" class="btn">🎤 Voice Assistant</button>
+    </div>
+
     <div class="content"><div class="module-container">{page_specific_content}</div></div>
     <div id="notifications"></div>
     {global_socket_script}
     {vue_app_script}
 </body></html>
 """
+    return final_html.replace('__WEBSOCKET_URL_PLACEHOLDER__', voice_backend_url)
 
 # ==================== VUE APP TEMPLATES AND SCRIPTS (Strings) ====================
 
